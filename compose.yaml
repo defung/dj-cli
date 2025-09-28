@@ -1,0 +1,11 @@
+
+services:
+  base-cli:
+    build:
+      context: .
+      network: host
+    image: base-cli:latest
+    container_name: base-cli
+    # Default shows help - override with docker compose run
+    command: ["--help"]
+    

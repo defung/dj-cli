@@ -1,0 +1,35 @@
+# Dependencies (will be installed in container)
+node_modules/
+
+# Build outputs (will be built in container)
+dist/
+
+# Git files
+.git/
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yaml
+.dockerignore
+
+# Documentation
+README.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
+

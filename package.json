@@ -1,0 +1,32 @@
+{
+  "name": "base-cli",
+  "version": "0.0.1",
+  "description": "A CLI to perform actions",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "base-cli": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean"
+  },
+  "keywords": ["cli", "typescript"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "tsx": "^4.15.7",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
