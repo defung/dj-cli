@@ -1,7 +1,7 @@
-import { Command } from "commander";
-import { CommandHandler } from "../types/command.js";
-import { HelloCommand } from "../commands/hello.js";
-import { GoodbyeCommand } from "../commands/goodbye.js";
+import { Command } from 'commander';
+import { CommandHandler } from '../types/command';
+import { HelloCommand } from '../commands/hello';
+import { GoodbyeCommand } from '../commands/goodbye';
 
 export class CommandRegistry {
   private commands: CommandHandler[] = [];
@@ -17,7 +17,7 @@ export class CommandRegistry {
   }
 
   setupCommands(program: Command): void {
-    this.commands.forEach((command) => {
+    this.commands.forEach(command => {
       command.setup(program);
     });
   }
