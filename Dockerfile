@@ -1,21 +1,26 @@
-# Use the official Node.js 20 Alpine image
-FROM node:20-alpine
+FROM node:22-trixie-slim AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install dependencies (tsx needed to run TypeScript natively)
+# Install dependencies
 RUN npm ci && npm cache clean --force
 
-# Copy source code
-COPY src/ ./src/
-COPY tsconfig.json ./
+# Copy compile/build configs
+COPY build*.js *config.json ./
 
-# Set the entrypoint to run TypeScript natively
-ENTRYPOINT ["npx", "tsx", "src/index.ts"]
+# Copy source code
+COPY src ./src
+
+RUN npm run build:all
+
+FROM debian:trixie-slim AS final
+
+COPY --from=builder /app/dist/dj /bin/dj
+
+ENTRYPOINT ["dj"]
 
 # Default command (shows help if no arguments provided)
-CMD ["help"]
+CMD ["--help"]

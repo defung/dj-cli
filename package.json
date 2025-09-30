@@ -1,36 +1,27 @@
 {
   "name": "dj-cli",
   "version": "0.0.1",
-  "description": "A TypeScript CLI for running commands",
-  "type": "module",
-  "main": "src/index.ts",
-  "bin": {
-    "dj-cli": "./src/index.ts"
-  },
+  "description": "A set of scripts to run on server",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx src/index.ts",
-    "start": "tsx src/index.ts",
-    "start:compiled": "node dist/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "npx ts-node src/index.ts",
     "clean": "rm -rf dist",
-    "prebuild": "npm run clean"
+    "build:js": "tsc",
+    "build:bundle": "node build-bundle.js",
+    "build:sea": "node build-sea.js",
+    "build:all": "npm run clean && npm run build:js && npm run build:bundle && npm run build:sea"
   },
-  "keywords": [
-    "cli",
-    "typescript"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@actual-app/api": "^25.9.0",
-    "commander": "^12.1.0"
-  },
+  "cliFileName": "dj",
+  "keywords": [],
+  "author": "defung",
+  "license": "ISC",
+  "type": "commonjs",
   "devDependencies": {
-    "@types/node": "^20.14.9",
-    "tsx": "^4.15.7",
-    "typescript": "^5.5.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "@actual-app/api": "^25.9.0",
+    "@types/node": "^22.18.7",
+    "commander": "^14.0.1",
+    "esbuild": "^0.25.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
   }
 }

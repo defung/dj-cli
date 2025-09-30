@@ -1,4 +1,4 @@
-
+---
 services:
   dj-cli:
     build:
@@ -8,4 +8,3 @@ services:
     container_name: dj-cli
     # Default shows help - override with docker compose run
     command: ["--help"]
-    

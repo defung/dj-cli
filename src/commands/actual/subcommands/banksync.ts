@@ -1,9 +1,9 @@
 import { Command } from 'commander';
-import { CommandHandler } from '../../types/command';
+import { CommandHandler } from '../../../types/command';
 import api from '@actual-app/api';
 import {APIAccountEntity} from "@actual-app/api/@types/loot-core/src/server/api-models";
 import { promises as fs, existsSync, statSync } from 'fs';
-import {ActualOptions} from "./index.ts";
+import {ActualOptions} from "../index";
 
 const ensureEmptyDirectory = async (dirPath: string): Promise<void> => {
     // Check if path exists

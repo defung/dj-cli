@@ -1,6 +1,7 @@
 import {Command} from 'commander';
 import {CommandHandler, CommandOption} from '../../types/command';
-import {BanksyncCommand} from "./banksync.ts";
+import {BanksyncCommand} from "./subcommands/banksync";
+import os from 'os';
 
 const actualOptions = {
     serverURL: {
@@ -22,7 +23,7 @@ const actualOptions = {
         flags: '-d, --dataDir <dataDir>',
         description: 'directory to store data',
         required: false,
-        default: `/dj/actual-${new Date().getTime()}`,
+        default: `${os.homedir()}/actual-${new Date().getTime()}`,
     } as CommandOption,
 } as const;
 
