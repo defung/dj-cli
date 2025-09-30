@@ -1,4 +1,4 @@
-import api from "@actual-app/api";
+import * as api from "@actual-app/api";
 import {APIAccountEntity} from "@actual-app/api/@types/loot-core/src/server/api-models";
 import {ensureEmptyDirectory} from "./files";
 
