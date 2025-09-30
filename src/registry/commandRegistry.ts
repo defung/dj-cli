@@ -3,15 +3,10 @@ import { CommandHandler } from '../types/command';
 import { ActualCommand } from "../commands/actual";
 
 export class CommandRegistry {
-  private commands: CommandHandler[] = [];
+  private readonly commands: CommandHandler[];
 
-  constructor() {
-    // Register all available commands here
-    this.registerCommand(new ActualCommand());
-  }
-
-  private registerCommand(command: CommandHandler): void {
-    this.commands.push(command);
+  constructor(...commands: CommandHandler[]) {
+    this.commands = commands;
   }
 
   setupCommands(program: Command): void {

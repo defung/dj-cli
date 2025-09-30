@@ -2,6 +2,7 @@ import {Command} from 'commander';
 import {CommandHandler, CommandOption} from '../../types/command';
 import {BanksyncCommand} from "./subcommands/banksync";
 import os from 'os';
+import {CommandRegistry} from "../../registry/commandRegistry";
 
 const actualOptions = {
     serverURL: {
@@ -29,9 +30,9 @@ const actualOptions = {
 
 export type ActualOptions = keyof typeof actualOptions;
 
-const actualSubCommands: CommandHandler[] = [
-    new BanksyncCommand(),
-];
+const subCommandRegistry = new CommandRegistry(
+    new BanksyncCommand()
+);
 
 export class ActualCommand implements CommandHandler {
     name = 'actual';
@@ -51,9 +52,6 @@ export class ActualCommand implements CommandHandler {
             }
         })
 
-        // subcommands
-        actualSubCommands.forEach((subCommand) => {
-            subCommand.setup(actualCommand);
-        });
+        subCommandRegistry.setupCommands(actualCommand);
     }
 }

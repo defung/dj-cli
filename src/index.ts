@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { CommandRegistry } from './registry/commandRegistry';
 import * as packageJson from '../package.json';
+import {ActualCommand} from "./commands/actual";
 
 function createProgram(): Command {
     const program = new Command();
@@ -11,7 +12,9 @@ function createProgram(): Command {
         .version(packageJson.version);
 
     // Register all commands
-    const registry = new CommandRegistry();
+    const registry = new CommandRegistry(
+        new ActualCommand()
+    );
     registry.setupCommands(program);
 
     return program;
