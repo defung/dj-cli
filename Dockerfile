@@ -1,10 +1,6 @@
 # Use the official Node.js 20 Alpine image
 FROM node:20-alpine
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S base -u 1001
-
 # Set working directory
 WORKDIR /app
 
@@ -18,12 +14,8 @@ RUN npm ci && npm cache clean --force
 COPY src/ ./src/
 COPY tsconfig.json ./
 
-# Change ownership to non-root user
-RUN chown -R base:nodejs /app
-USER base
-
 # Set the entrypoint to run TypeScript natively
 ENTRYPOINT ["npx", "tsx", "src/index.ts"]
 
 # Default command (shows help if no arguments provided)
-CMD ["--help"]
+CMD ["help"]

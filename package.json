@@ -1,11 +1,11 @@
 {
-  "name": "base-cli",
+  "name": "dj-cli",
   "version": "0.0.1",
   "description": "A TypeScript CLI for running commands",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
-    "base-cli": "./src/index.ts"
+    "dj-cli": "./src/index.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -15,10 +15,14 @@
     "clean": "rm -rf dist",
     "prebuild": "npm run clean"
   },
-  "keywords": ["cli", "typescript"],
+  "keywords": [
+    "cli",
+    "typescript"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@actual-app/api": "^25.9.0",
     "commander": "^12.1.0"
   },
   "devDependencies": {

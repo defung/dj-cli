@@ -16,7 +16,7 @@ function createProgram(): Command {
   const program = new Command();
 
   program
-      .name('base-cli')
+      .name('dj-cli')
       .description('A CLI application for running commands')
       .version(packageJson.version);
 

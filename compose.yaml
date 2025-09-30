@@ -1,11 +1,11 @@
 
 services:
-  base-cli:
+  dj-cli:
     build:
       context: .
       network: host
-    image: base-cli:latest
-    container_name: base-cli
+    image: dj-cli:latest
+    container_name: dj-cli
     # Default shows help - override with docker compose run
     command: ["--help"]
     

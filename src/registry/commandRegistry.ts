@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { CommandHandler } from '../types/command';
 import { HelloCommand } from '../commands/hello';
 import { GoodbyeCommand } from '../commands/goodbye';
+import { ActualCommand } from "../commands/actual";
 
 export class CommandRegistry {
   private commands: CommandHandler[] = [];
@@ -10,6 +11,7 @@ export class CommandRegistry {
     // Register all available commands here
     this.registerCommand(new HelloCommand());
     this.registerCommand(new GoodbyeCommand());
+    this.registerCommand(new ActualCommand());
   }
 
   private registerCommand(command: CommandHandler): void {
