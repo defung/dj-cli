@@ -8,7 +8,9 @@
     "clean": "rm -rf dist",
     "build:js": "tsc",
     "build:bundle": "node build-bundle.js",
+    "build:deps": "node build-deps.js",
     "build:sea": "node build-sea.js",
+    "build:docker": "npm run clean && npm run build:js && npm run build:bundle",
     "build:all": "npm run clean && npm run build:js && npm run build:bundle && npm run build:sea"
   },
   "cliFileName": "dj",
@@ -23,5 +25,9 @@
     "esbuild": "^0.25.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "@actual-app/api": "^25.9.0",
+    "better-sqlite3": "^12.4.1"
   }
 }
