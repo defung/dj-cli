@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { CommandRegistry } from './registry/commandRegistry';
 import * as packageJson from '../package.json';
 import {ActualCommand} from "./commands/actual";
+import {SubsCommand} from "./commands/subs";
 
 function createProgram(): Command {
     const program = new Command();
@@ -13,7 +14,8 @@ function createProgram(): Command {
 
     // Register all commands
     const registry = new CommandRegistry(
-        new ActualCommand()
+        new ActualCommand(),
+        new SubsCommand(),
     );
     registry.setupCommands(program);
 

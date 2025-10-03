@@ -23,6 +23,7 @@
     "@types/node": "^22.18.7",
     "commander": "^14.0.1",
     "esbuild": "^0.25.10",
+    "subsrt-ts": "^2.1.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   },

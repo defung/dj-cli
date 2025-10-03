@@ -3,6 +3,8 @@ FROM node:22-trixie-slim
 
 ENV NODE_PATH /usr/local/lib/node_modules
 
+RUN apt update && apt install -y mkvtoolnix
+
 WORKDIR /app
 
 # Copy package files first for better layer caching
