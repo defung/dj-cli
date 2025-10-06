@@ -2,8 +2,10 @@ import {Command} from 'commander';
 import {CommandHandler} from '../../types/command';
 import {CommandRegistry} from "../../registry/commandRegistry";
 import {BatchExtractMergeCommand} from "./subcommands/batchExtractMerge";
+import {MergeCommand} from "./subcommands/merge";
 
 const subCommandRegistry = new CommandRegistry(
+    new MergeCommand(),
     new BatchExtractMergeCommand(),
 );
 

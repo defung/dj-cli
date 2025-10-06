@@ -1,37 +1,8 @@
-#!/usr/bin/env node
-import { parse, build } from "subsrt-ts";
-import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import { createReadStream } from "fs";
-import { createInterface } from "readline";
 import path from "path";
-import { promisify } from "util";
-import {Caption} from "subsrt-ts/dist/types/handler";
-
-/**
- * Executes a command and returns stdout, stderr, and exit code
- */
-async function executeCommand(command: string, args: string[]): Promise<{stdout: Buffer, stderr: Buffer, code: number}> {
-    return new Promise((resolve, reject) => {
-        const process = spawn(command, args);
-        let stdout = Buffer.alloc(0);
-        let stderr = Buffer.alloc(0);
-        
-        process.stdout.on('data', (data) => {
-            stdout = Buffer.concat([stdout, data]);
-        });
-        
-        process.stderr.on('data', (data) => {
-            stderr = Buffer.concat([stderr, data]);
-        });
-        
-        process.on('close', (code) => {
-            resolve({ stdout, stderr, code: code || 0 });
-        });
-        
-        process.on('error', reject);
-    });
-}
+import {executeCommand, readInput} from "./proc";
+import { parseSync, stringifySync, Node } from 'subtitle'
+import {ParsedPath} from "node:path";
 
 interface MergeOptions {
     whiteSubtitlePath: string;
@@ -92,7 +63,7 @@ export async function listSubtitles(filePath: string): Promise<SubtitleTrack[]> 
         const data: MkvMergeOutput = JSON.parse(outputText);
 
         // Filter and map subtitle tracks
-        const subtitleTracks: SubtitleTrack[] = data.tracks
+        return data.tracks
             .filter(track => track.type === "subtitles")
             .map(track => ({
                 id: track.id,
@@ -103,8 +74,6 @@ export async function listSubtitles(filePath: string): Promise<SubtitleTrack[]> 
                 default: track.properties?.default_track ?? false,
                 forced: track.properties?.forced_track ?? false,
             }));
-
-        return subtitleTracks;
 
     } catch (error) {
         if (error instanceof Error) {
@@ -146,20 +115,10 @@ export async function selectSubtitles(subtitles: SubtitleTrack[]): Promise<Subti
     for (let i = 1; i <= 2; i++) {
         if (selectedTracks.length >= subtitles.length) break;
 
-        console.log(`\nSelect subtitle ${i} (or press Enter to skip):`);
+        console.log(`\nSelect subtitle ${i}:`);
 
         // Read user input
-        const rl = createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-
-        const input = await new Promise<string>((resolve) => {
-            rl.question(`Enter number (1-${subtitles.length}): `, (answer) => {
-                rl.close();
-                resolve(answer);
-            });
-        });
+        const input = await readInput(`Enter number (1-${subtitles.length}): `);
 
         if (!input || input.trim() === '') {
             if (i === 1) {
@@ -395,7 +354,7 @@ const listMkvFiles = async (
  * @throws Error if files cannot be read or parsed
  */
 export async function mergeSrtFiles(options: MergeOptions): Promise<void> {
-    const { whiteSubtitlePath, yellowSubtitlePath, outputPath, preserveFormatting = true } = options;
+    const { whiteSubtitlePath, yellowSubtitlePath, outputPath } = options;
 
     // Read both subtitle files
     const whiteContent = await readSubtitleFile(whiteSubtitlePath);
@@ -407,14 +366,14 @@ export async function mergeSrtFiles(options: MergeOptions): Promise<void> {
 
     // Merge and sort subtitles by start time
     const mergedSubtitles = [...whiteSubtitles, ...yellowSubtitles].sort((a, b) => {
-        const aStart = a.type === 'caption' ? a.start : 0;
-        const bStart = b.type === 'caption' ? b.start : 0;
+        const aStart = a.type === 'cue' ? a.data.start : 0;
+        const bStart = b.type === 'cue' ? b.data.start : 0;
 
         return aStart - bStart;
     });
 
     // Generate merged SRT content
-    const mergedContent = build(mergedSubtitles, { format: "srt" });
+    const mergedContent = stringifySync(mergedSubtitles, { format: "SRT" });
 
     // Write to output file
     await fs.writeFile(outputPath, mergedContent, 'utf8');
@@ -427,35 +386,40 @@ export async function mergeSrtFiles(options: MergeOptions): Promise<void> {
  * Reads and validates a subtitle file
  */
 async function readSubtitleFile(filePath: string): Promise<string> {
+    let content;
+
     try {
-        const content = await fs.readFile(filePath, 'utf8');
-        if (!content.trim()) {
-            throw new Error(`Subtitle file is empty: ${filePath}`);
-        }
-        return content;
+        content = await fs.readFile(filePath, 'utf8');
     } catch (error: any) {
         if (error.code === 'ENOENT') {
             throw new Error(`Subtitle file not found: ${filePath}`);
         }
         throw new Error(`Cannot read subtitle file ${filePath}: ${error.message}`);
     }
+
+    if (!content.trim()) {
+        throw new Error(`Subtitle file is empty: ${filePath}`);
+    }
+    return content;
 }
 
 /**
  * Parses SRT content and applies color formatting
  */
-function parseSubtitles(content: string, color: "white" | "yellow"): Caption[] {
-    const parsed = parse(content);
-
-    return parsed.map(entry => {
-        if (entry.type === 'caption') {
+const parseSubtitles = (content: string, color: 'white' | 'yellow'): Node[] => {
+    const nodes = parseSync(content);
+    return nodes.map((n): Node => {
+        if (n.type === 'cue') {
             return {
-                ...entry,
-                text: applyColorFormatting(entry.text, color)
+                ...n,
+                data: {
+                    ...n.data,
+                    text: applyColorFormatting(n.data.text, color),
+                }
             }
+        } else {
+            return n;
         }
-
-        return entry;
     });
 }
 
@@ -470,117 +434,50 @@ function applyColorFormatting(text: string, color: "white" | "yellow"): string {
     return `<font color="${colorTag}">${text}</font>`;
 }
 
-/**
- * Converts SRT time format to milliseconds for sorting
- */
-function timeToMilliseconds(timeStr: string): number {
-    try {
-        // SRT format: HH:MM:SS,mmm
-        const [time, ms] = timeStr.split(',');
-        const [hours, minutes, seconds] = time.split(':').map(Number);
-
-        return (hours * 3600 + minutes * 60 + seconds) * 1000 + parseInt(ms || '0');
-    } catch (error) {
-        throw new Error(`Invalid time format: ${timeStr}`);
-    }
+const getFileInfo = (filePath: string): ParsedPath => {
+    const fileNameWithExtension = path.basename(filePath);
+    return path.parse(fileNameWithExtension);
 }
 
-/**
- * Merges two subtitle file paths by combining their language codes into a single output path.
- *
- * @param path1 - First subtitle file path (e.g., "/mnt/test/tracks/movie.chi.srt")
- * @param path2 - Second subtitle file path (e.g., "/mnt/test/tracks/movie.eng.srt")
- * @param outputPath - Directory path for the merged file (e.g., "/mnt/output")
- * @returns Merged file path with combined language codes (e.g., "/mnt/output/movie.chieng.srt")
- *
- * @example
- * calculateOutputFile(
- *   "/mnt/test/tracks/movie.chi.srt",
- *   "/mnt/test/tracks/movie.eng.srt",
- *   "/mnt/output"
- * )
- * // Returns: "/mnt/output/movie.chieng.srt"
- */
-const calculateOutputFile = (path1: string, path2: string, outputPath: string): string => {
-    // Extract directory and filename parts
-    const getPathParts = (fullPath: string) => {
-        const lastSlash = fullPath.lastIndexOf('/');
-        const directory = fullPath.substring(0, lastSlash + 1);
-        const filename = fullPath.substring(lastSlash + 1);
-        return { directory, filename };
-    };
-
-    // Extract language code from filename (assumes format: basename.lang.ext)
-    const extractLanguageCode = (filename: string): { baseName: string; langCode: string; extension: string } => {
-        const parts = filename.split('.');
-        if (parts.length < 3) {
-            throw new Error(`Invalid filename format: ${filename}`);
-        }
-
-        const extension = parts[parts.length - 1];
-        const langCode = parts[parts.length - 2];
-        const baseName = parts.slice(0, -2).join('.');
-
-        return { baseName, langCode, extension };
-    };
-
-    const { directory: dir1, filename: filename1 } = getPathParts(path1);
-    const { directory: dir2, filename: filename2 } = getPathParts(path2);
-
-    const { baseName: baseName1, langCode: lang1, extension: ext1 } = extractLanguageCode(filename1);
-    const { baseName: baseName2, langCode: lang2, extension: ext2 } = extractLanguageCode(filename2);
-
-    // Validate that base names and extensions match
-    if (baseName1 !== baseName2) {
-        throw new Error(`Base names don't match: ${baseName1} vs ${baseName2}`);
-    }
-    if (ext1 !== ext2) {
-        throw new Error(`Extensions don't match: ${ext1} vs ${ext2}`);
+const findSubtitlesToExtract = async (targetTracks: SubtitleTrack[], mkvFileTracks: SubtitleTrack[]): Promise<SubtitleTrack[]> => {
+    if (targetTracks.length < 2) {
+        return await selectSubtitles(mkvFileTracks);
     }
 
-    // Combine language codes and create new filename
-    const combinedLangCode = lang1 + lang2;
-    const newFilename = `${baseName1}.${combinedLangCode}.${ext1}`;
+    const findResult = findSubtitleTracks(targetTracks, mkvFileTracks);
 
-    return path.join(outputPath, newFilename);
+    if (findResult.allFound) {
+        console.log("Found same tracks to extract");
+        return findResult.found;
+    } else {
+        console.log("Unable to find all tracks!");
+        return await selectSubtitles(mkvFileTracks);
+    }
 };
 
+const batchExtractMergeOp = async (mkvFiles: string[], targetTracks: SubtitleTrack[]): Promise<void> => {
+    if (mkvFiles.length < 1) { return; }
+
+    const mkvFilePath = mkvFiles[0];
+    const mkvFileInfo = getFileInfo(mkvFilePath);
+
+    const mkvFileSubtitles = await listSubtitles(mkvFilePath);
+
+    const tracksToExtract = await findSubtitlesToExtract(targetTracks, mkvFileSubtitles);
+
+    const extracted = await extractSubtitles(mkvFilePath, tracksToExtract, path.join(mkvFileInfo.dir, 'tracks'));
+
+    const outputPath = `${mkvFileInfo.dir}/${mkvFileInfo.name}.${tracksToExtract[0].language}${tracksToExtract[1].language}.${tracksToExtract[0].codec}`;
+
+    await mergeSrtFiles({
+        whiteSubtitlePath: extracted[0],
+        yellowSubtitlePath: extracted[1],
+        outputPath: outputPath,
+    });
+
+    return batchExtractMergeOp(mkvFiles.slice(1), tracksToExtract);
+}
+
 export const runBatchExtractMerge = async (workdir: string): Promise<void> => {
-    const mkvFiles = await listMkvFiles(workdir);
-
-    let selectedSubtitles: SubtitleTrack[] = [];
-
-    for (const mkvFile of mkvFiles) {
-        console.log(`Processing '${mkvFile}'...`);
-
-        const subtitles = await listSubtitles(mkvFile);
-        let subtitlesToExtract: SubtitleTrack[] = [];
-
-        if (selectedSubtitles.length === 2) {
-            const findResult = findSubtitleTracks(selectedSubtitles, subtitles);
-            if (findResult.allFound) {
-                subtitlesToExtract = findResult.found;
-            } else {
-                console.log("Unable to find all tracks!");
-            }
-        }
-
-        if (subtitlesToExtract.length === 2) {
-            console.log("Found same tracks to extract...");
-        } else {
-            printSubtitles(subtitles);
-            selectedSubtitles = await selectSubtitles(subtitles);
-            subtitlesToExtract = [...selectedSubtitles];
-        }
-
-        const extracted = await extractSubtitles(mkvFile, subtitlesToExtract, path.join(workdir, 'tracks'));
-        const outputPath = calculateOutputFile(extracted[0], extracted[1], workdir);
-
-        await mergeSrtFiles({
-            whiteSubtitlePath: extracted[0],
-            yellowSubtitlePath: extracted[1],
-            outputPath: outputPath,
-            preserveFormatting: true
-        });
-    }
+    return batchExtractMergeOp(await listMkvFiles(workdir), []);
 }
