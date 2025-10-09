@@ -1,12 +1,17 @@
 import { promises as fs } from "fs";
 import path from "path";
-import {executeCommand, readInput} from "./proc";
+import {executeCommand, getFileInfo, readInput} from "./proc";
 import { parseSync, stringifySync, Node } from 'subtitle'
 import {ParsedPath} from "node:path";
 
+interface SubtitleOptions {
+    path: string;
+    color?: string;
+}
+
 interface MergeOptions {
-    whiteSubtitlePath: string;
-    yellowSubtitlePath: string;
+    subtitle1: SubtitleOptions;
+    subtitle2: SubtitleOptions;
     outputPath: string;
     preserveFormatting?: boolean;
 }
@@ -37,20 +42,20 @@ interface MkvMergeOutput {
 
 /**
  * Lists all subtitle tracks from a video file using mkvmerge -J command
- * @param filePath - Path to the video file
+ * @param mkvFilePath - Path to the video file
  * @returns Promise<SubtitleTrack[]> - Array of subtitle tracks
  */
-export async function listSubtitles(filePath: string): Promise<SubtitleTrack[]> {
+export const getSubtitlesFromMkv = async (mkvFilePath: string): Promise<SubtitleTrack[]> => {
     try {
         // Check if file exists
         try {
-            await fs.access(filePath);
+            await fs.access(mkvFilePath);
         } catch {
-            throw new Error(`File not found: ${filePath}`);
+            throw new Error(`File not found: ${mkvFilePath}`);
         }
 
         // Execute mkvmerge -J command
-        const { stdout, stderr, code } = await executeCommand("mkvmerge", ["-J", filePath]);
+        const { stdout, stderr, code } = await executeCommand("mkvmerge", ["-J", mkvFilePath]);
 
         // Check if command executed successfully
         if (code !== 0) {
@@ -87,7 +92,7 @@ export async function listSubtitles(filePath: string): Promise<SubtitleTrack[]> 
  * Pretty prints subtitle information to console
  * @param subtitles - Array of subtitle tracks
  */
-export function printSubtitles(subtitles: SubtitleTrack[]): void {
+function printSubtitles(subtitles: SubtitleTrack[]): void {
     if (subtitles.length === 0) {
         console.log("No subtitle tracks found.");
         return;
@@ -103,10 +108,11 @@ export function printSubtitles(subtitles: SubtitleTrack[]): void {
 /**
  * Prompts user to select subtitles from the available tracks
  * @param subtitles - Array of subtitle tracks
+ * @param numTracks - number of tracks to select
  * @returns Promise<SubtitleTrack[]> - Array of selected subtitle tracks (up to 2)
  */
-export async function selectSubtitles(subtitles: SubtitleTrack[]): Promise<SubtitleTrack[]> {
-    if (subtitles.length === 0) {
+const selectSubtitles = async (subtitles: SubtitleTrack[], numTracks: number): Promise<SubtitleTrack[]> => {
+    if (subtitles.length === 0 || numTracks < 1) {
         return [];
     }
 
@@ -114,41 +120,26 @@ export async function selectSubtitles(subtitles: SubtitleTrack[]): Promise<Subti
 
     printSubtitles(subtitles);
 
-    for (let i = 1; i <= 2; i++) {
+    for (let i = 1; i <= numTracks; i++) {
         if (selectedTracks.length >= subtitles.length) break;
 
-        console.log(`\nSelect subtitle ${i}:`);
+        console.log(`\nSelect subtitle (${i} of ${numTracks}):`);
 
         // Read user input
-        const input = await readInput(`Enter number (1-${subtitles.length}): `);
+        const input = await readInput(`Enter number (1-${subtitles.length}): `, (input: string): boolean => {
+            const inputNum = parseInt(input.trim());
 
-        if (!input || input.trim() === '') {
-            if (i === 1) {
-                console.log("No subtitles selected.");
-                return [];
-            }
-            break;
-        }
+            if (Number.isNaN(inputNum) || (inputNum < 1 || inputNum > subtitles.length)) return false;
 
-        const selection = parseInt(input.trim());
+            const selectedTrack = subtitles[inputNum - 1];
 
-        if (isNaN(selection) || selection < 1 || selection > subtitles.length) {
-            console.log("Invalid selection. Please enter a valid number.");
-            i--; // Retry this selection
-            continue;
-        }
+            return !selectedTracks.some(track => track.id === selectedTrack.id);
+        });
 
-        const selectedTrack = subtitles[selection - 1];
+        const selectedTrack = subtitles[parseInt(input.trim()) - 1];
 
-        // Check if already selected
-        if (selectedTracks.some(track => track.id === selectedTrack.id)) {
-            console.log("This subtitle is already selected. Please choose a different one.");
-            i--; // Retry this selection
-            continue;
-        }
-
-        selectedTracks.push(selectedTrack);
         console.log(`Selected: ${selectedTrack.language || 'Unknown'} - ${selectedTrack.trackName || 'Unnamed'}`);
+        selectedTracks.push(selectedTrack);
     }
 
     return selectedTracks;
@@ -160,7 +151,7 @@ export async function selectSubtitles(subtitles: SubtitleTrack[]): Promise<Subti
  * @param allTracks - Full array of subtitle tracks to search in
  * @returns Object containing found tracks, missing tracks, and match info
  */
-export function findSubtitleTracks(
+function findSubtitleTracks(
     targetTracks: SubtitleTrack[],
     allTracks: SubtitleTrack[]
 ): {
@@ -198,7 +189,7 @@ export function findSubtitleTracks(
     };
 }
 
-export const getSubtitleExtension = (codec: string): string => {
+const getSubtitleExtension = (codec: string): string => {
     let extension = '.srt'; // default
     if (codec.toLowerCase().includes('ass') || codec.toLowerCase().includes('ssa')) {
         extension = '.ass';
@@ -361,19 +352,26 @@ const listMkvFiles = async (
  * @param options Configuration object with file paths and options
  * @throws Error if files cannot be read or parsed
  */
-export async function mergeSrtFiles(options: MergeOptions): Promise<void> {
-    const { whiteSubtitlePath, yellowSubtitlePath, outputPath } = options;
+export const mergeSrtFiles = async (options: MergeOptions): Promise<void> => {
+    const { subtitle1, subtitle2, outputPath } = options;
 
     // Read both subtitle files
-    const whiteContent = await readSubtitleFile(whiteSubtitlePath);
-    const yellowContent = await readSubtitleFile(yellowSubtitlePath);
+    const subtitle1Content = await readSubtitleFileContent(subtitle1.path);
+    const subtitle2Content = await readSubtitleFileContent(subtitle2.path);
+
+    if (!subtitle1Content.trim()) {
+        throw new Error(`Subtitle file is empty: ${subtitle1.path}`);
+    }
+    if (!subtitle2Content.trim()) {
+        throw new Error(`Subtitle file is empty: ${subtitle2.path}`);
+    }
 
     // Parse SRT content
-    const whiteSubtitles = parseSubtitles(whiteContent, "white");
-    const yellowSubtitles = parseSubtitles(yellowContent, "yellow");
+    const subtitle1NodeList = parseSubtitles(subtitle1Content, subtitle1.color ?? "white");
+    const subtitle2NodeList = parseSubtitles(subtitle2Content, subtitle2.color ?? "yellow");
 
     // Merge and sort subtitles by start time
-    const mergedSubtitles = [...whiteSubtitles, ...yellowSubtitles].sort((a, b) => {
+    const mergedNodeList = [...subtitle1NodeList, ...subtitle2NodeList].sort((a, b) => {
         const aStart = a.type === 'cue' ? a.data.start : 0;
         const bStart = b.type === 'cue' ? b.data.start : 0;
 
@@ -381,40 +379,32 @@ export async function mergeSrtFiles(options: MergeOptions): Promise<void> {
     });
 
     // Generate merged SRT content
-    const mergedContent = stringifySync(mergedSubtitles, { format: "SRT" });
+    const mergedContent = stringifySync(mergedNodeList, { format: "SRT" });
 
     // Write to output file
     await fs.writeFile(outputPath, mergedContent, 'utf8');
 
     console.log(`✅ Successfully merged subtitles to: ${outputPath}`);
-    console.log(`📊 Total subtitles: ${mergedContent.length} (${whiteSubtitles.length} white + ${yellowSubtitles.length} yellow)`);
 }
 
 /**
  * Reads and validates a subtitle file
  */
-async function readSubtitleFile(filePath: string): Promise<string> {
-    let content;
-
+const readSubtitleFileContent = async (filePath: string): Promise<string> => {
     try {
-        content = await fs.readFile(filePath, 'utf8');
+        return await fs.readFile(filePath, 'utf8');
     } catch (error: any) {
         if (error.code === 'ENOENT') {
             throw new Error(`Subtitle file not found: ${filePath}`);
         }
         throw new Error(`Cannot read subtitle file ${filePath}: ${error.message}`);
     }
-
-    if (!content.trim()) {
-        throw new Error(`Subtitle file is empty: ${filePath}`);
-    }
-    return content;
 }
 
 /**
  * Parses SRT content and applies color formatting
  */
-const parseSubtitles = (content: string, color: 'white' | 'yellow'): Node[] => {
+const parseSubtitles = (content: string, applyColor?: string): Node[] => {
     const nodes = parseSync(content);
     return nodes.map((n): Node => {
         if (n.type === 'cue') {
@@ -422,7 +412,7 @@ const parseSubtitles = (content: string, color: 'white' | 'yellow'): Node[] => {
                 ...n,
                 data: {
                     ...n.data,
-                    text: applyColorFormatting(n.data.text, color),
+                    text: applyColor ? `<font color="${applyColor}">${n.data.text}</font>` : n.data.text,
                 }
             }
         } else {
@@ -431,36 +421,20 @@ const parseSubtitles = (content: string, color: 'white' | 'yellow'): Node[] => {
     });
 }
 
-/**
- * Applies HTML color formatting to subtitle text
- */
-function applyColorFormatting(text: string, color: "white" | "yellow"): string {
-    if (!text.trim()) return text;
-
-    // Preserve existing formatting by wrapping the entire text block
-    const colorTag = color === "white" ? 'white' : 'yellow';
-    return `<font color="${colorTag}">${text}</font>`;
-}
-
-const getFileInfo = (filePath: string): ParsedPath => {
-    const fileNameWithExtension = path.basename(filePath);
-    return path.parse(fileNameWithExtension);
-}
-
-const findSubtitlesToExtract = async (targetTracks: SubtitleTrack[], mkvFileTracks: SubtitleTrack[]): Promise<SubtitleTrack[]> => {
-    if (targetTracks.length < 2) {
-        return await selectSubtitles(mkvFileTracks);
+export const findSubtitlesToExtract = async (numTracks: number, targetTracks: SubtitleTrack[], mkvFileTracks: SubtitleTrack[]): Promise<SubtitleTrack[]> => {
+    if (targetTracks.length < numTracks) {
+        return await selectSubtitles(mkvFileTracks, numTracks);
     }
 
     const findResult = findSubtitleTracks(targetTracks, mkvFileTracks);
 
-    if (findResult.allFound) {
-        console.log("Found same tracks to extract");
-        return findResult.found;
-    } else {
+    if (!findResult.allFound) {
         console.log("Unable to find all tracks!");
-        return await selectSubtitles(mkvFileTracks);
+        return await selectSubtitles(mkvFileTracks, numTracks);
     }
+
+    console.log("Found same tracks to extract");
+    return findResult.found;
 };
 
 const batchExtractMergeOp = async (mkvFiles: string[], workdir: string, targetTracks: SubtitleTrack[]): Promise<void> => {
@@ -469,17 +443,17 @@ const batchExtractMergeOp = async (mkvFiles: string[], workdir: string, targetTr
     const mkvFilePath = mkvFiles[0];
     const mkvFileInfo = getFileInfo(mkvFilePath);
 
-    const mkvFileSubtitles = await listSubtitles(mkvFilePath);
+    const mkvFileSubtitles = await getSubtitlesFromMkv(mkvFilePath);
 
-    const tracksToExtract = await findSubtitlesToExtract(targetTracks, mkvFileSubtitles);
+    const tracksToExtract = await findSubtitlesToExtract(2, targetTracks, mkvFileSubtitles);
 
-    const extracted = await extractSubtitles(mkvFilePath, tracksToExtract, path.join(mkvFileInfo.dir, 'tracks'));
+    const extracted = await extractSubtitles(mkvFilePath, tracksToExtract, path.join(workdir, 'tracks'));
 
     const outputPath = `${workdir}/${mkvFileInfo.name}.${tracksToExtract[0].language}${tracksToExtract[1].language}${getSubtitleExtension(tracksToExtract[0].codec)}`;
 
     await mergeSrtFiles({
-        whiteSubtitlePath: extracted[0],
-        yellowSubtitlePath: extracted[1],
+        subtitle1: { path: extracted[0] },
+        subtitle2: { path: extracted[1] },
         outputPath: outputPath,
     });
 

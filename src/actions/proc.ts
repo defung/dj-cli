@@ -1,5 +1,7 @@
 import {spawn} from "child_process";
 import {createInterface} from "readline";
+import {ParsedPath} from "node:path";
+import path from "path";
 
 /**
  * Executes a command and returns stdout, stderr, and exit code
@@ -26,16 +28,34 @@ export async function executeCommand(command: string, args: string[]): Promise<{
     });
 }
 
-export const readInput = async (question: string): Promise<string> => {
+export const readInput = async (question: string, validator?: (input: string) => boolean): Promise<string> => {
     const rl = createInterface({
         input: process.stdin,
         output: process.stdout
     });
 
-    return await new Promise<string>((resolve) => {
-        rl.question(question, (answer) => {
-            rl.close();
-            resolve(answer);
+    let input: string = '';
+    let firstRun = true;
+
+    do {
+        if (!firstRun) {
+            console.log("Invalid input!");
+        }
+
+        input = await new Promise<string>((resolve) => {
+            rl.question(question, (answer) => {
+                rl.close();
+                resolve(answer);
+            });
         });
-    });
+
+        firstRun = false;
+    } while (!validator || validator(input));
+
+    return input;
+}
+
+export const getFileInfo = (filePath: string): ParsedPath => {
+    const fileNameWithExtension = path.basename(filePath);
+    return path.parse(fileNameWithExtension);
 }
