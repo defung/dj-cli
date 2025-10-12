@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command } from "@commander-js/extra-typings";
 
 export interface CommandHandler {
   name: string;

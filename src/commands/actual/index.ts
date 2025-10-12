@@ -1,4 +1,4 @@
-import {Command} from 'commander';
+import {Command} from '@commander-js/extra-typings';
 import {CommandHandler, CommandOption} from '../../types/command';
 import {BanksyncCommand} from "./subcommands/banksync";
 import os from 'os';

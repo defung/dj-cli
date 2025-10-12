@@ -20,6 +20,7 @@
   "type": "commonjs",
   "devDependencies": {
     "@actual-app/api": "^25.10.0",
+    "@commander-js/extra-typings": "^14.0.0",
     "@types/node": "^22.18.7",
     "commander": "^14.0.1",
     "esbuild": "^0.25.10",

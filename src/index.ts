@@ -1,4 +1,4 @@
-import { Command } from 'commander';
+import { Command } from '@commander-js/extra-typings';
 import { CommandRegistry } from './registry/commandRegistry';
 import * as packageJson from '../package.json';
 import {ActualCommand} from "./commands/actual";

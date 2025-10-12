@@ -1,5 +1,5 @@
 import {CommandHandler} from "../../../types/command";
-import {Command} from "commander";
+import { Command } from "@commander-js/extra-typings";
 import {shiftSubtitle} from "../../../actions/subs";
 
 export class ShiftCommand implements CommandHandler {
@@ -12,8 +12,8 @@ export class ShiftCommand implements CommandHandler {
             .description(this.description)
             .argument('<timeMs>', 'Time in milliseconds to shift (+ to delay, - to speed up)')
             .argument('<subPath>', 'Path to subtitle file')
-            .argument('<outPath>', 'Path to output file')
-            .action(async (timeMsStr: string, subPath: string, outPath: string) => {
+            .argument('[outPath]', 'Path to output file')
+            .action(async (timeMsStr, subPath, outPath) => {
                 const timeMs = parseInt(timeMsStr, 10);
 
                 if (isNaN(timeMs)) {
@@ -26,7 +26,7 @@ export class ShiftCommand implements CommandHandler {
                     return;
                 }
 
-                await shiftSubtitle(timeMs, subPath, outPath);
+                await shiftSubtitle(timeMs, subPath, outPath ?? subPath);
             });
     }
 }

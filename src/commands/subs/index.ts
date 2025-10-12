@@ -1,4 +1,4 @@
-import {Command} from 'commander';
+import {Command} from '@commander-js/extra-typings';
 import {CommandHandler} from '../../types/command';
 import {CommandRegistry} from "../../registry/commandRegistry";
 import {BatchExtractMergeCommand} from "./subcommands/batchExtractMerge";
