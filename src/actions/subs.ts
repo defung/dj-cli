@@ -458,8 +458,39 @@ const batchExtractMergeOp = async (mkvFiles: string[], workdir: string, targetTr
     });
 
     return batchExtractMergeOp(mkvFiles.slice(1), workdir, tracksToExtract);
-}
+};
 
 export const runBatchExtractMerge = async (workdir: string): Promise<void> => {
     return batchExtractMergeOp(await listMkvFiles(workdir), workdir, []);
 }
+
+export const shiftSubtitle = async (timeMs: number, subPath: string, outPath: string): Promise<void> => {
+    const subtitleContent = await readSubtitleFileContent(subPath);
+
+    if (!subtitleContent.trim()) {
+        throw new Error(`Subtitle file is empty: ${subPath}`);
+    }
+
+    const originalSubtitles = parseSubtitles(subtitleContent);
+
+    const shiftedSubtitles = originalSubtitles.map((node: Node): Node => {
+        if (node.type === 'header') {
+            return node;
+        }
+
+        return {
+            ...node,
+            data: {
+                ...node.data,
+                start: node.data.start + timeMs,
+                end: node.data.end + timeMs,
+            }
+        }
+    });
+
+    const shiftedContent = stringifySync(shiftedSubtitles, { format: 'SRT' });
+
+    await fs.writeFile(outPath, shiftedContent, 'utf8');
+
+    console.log(`✅ Successfully shifted subtitle, written to: ${outPath}`);
+};

@@ -4,10 +4,12 @@ import {CommandRegistry} from "../../registry/commandRegistry";
 import {BatchExtractMergeCommand} from "./subcommands/batchExtractMerge";
 import {MergeCommand} from "./subcommands/merge";
 import {ExtractCommand} from "./subcommands/extract";
+import {ShiftCommand} from "./subcommands/shift";
 
 const subCommandRegistry = new CommandRegistry(
     new ExtractCommand(),
     new MergeCommand(),
+    new ShiftCommand(),
     new BatchExtractMergeCommand(),
 );
 
