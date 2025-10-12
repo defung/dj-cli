@@ -4,7 +4,7 @@ services:
     build:
       context: .
       network: host
-    image: dj-cli:latest
+    image: registry.dj-home.org/dj-cli:latest
     container_name: dj-cli
     # Default shows help - override with docker compose run
     command: ["--help"]
