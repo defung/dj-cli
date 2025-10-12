@@ -19,7 +19,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@actual-app/api": "^25.9.0",
+    "@actual-app/api": "^25.10.0",
     "@types/node": "^22.18.7",
     "commander": "^14.0.1",
     "esbuild": "^0.25.10",
