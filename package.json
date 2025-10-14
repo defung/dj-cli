@@ -21,9 +21,13 @@
   "devDependencies": {
     "@actual-app/api": "^25.10.0",
     "@commander-js/extra-typings": "^14.0.0",
+    "@types/lodash": "^4.17.20",
+    "@types/luxon": "^3.7.1",
     "@types/node": "^22.18.7",
     "commander": "^14.0.1",
     "esbuild": "^0.25.10",
+    "lodash": "^4.17.21",
+    "luxon": "^3.7.2",
     "subtitle": "^4.2.2-alpha.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

@@ -1,11 +1,11 @@
 import { Command } from '@commander-js/extra-typings';
 import { CommandHandler } from '../../../types/command';
 import {ActualOptions} from "../index";
-import {banksync} from "../../../actions/actual";
+import {banksync, updateCreditCardSchedules} from "../../../actions/actual";
 
-export class BanksyncCommand implements CommandHandler {
-    name = 'banksync';
-    description = 'Perform bank sync against all accounts';
+export class StatementsyncCommand implements CommandHandler {
+    name = 'statementsync';
+    description = 'Sync credit card statements and schedules';
 
     setup(program: Command): void {
         program
@@ -18,7 +18,7 @@ export class BanksyncCommand implements CommandHandler {
                     throw new Error('Missing required options!');
                 }
 
-                await banksync({
+                await updateCreditCardSchedules({
                     serverURL: options.serverURL,
                     password: options.password,
                     syncID: options.syncID,

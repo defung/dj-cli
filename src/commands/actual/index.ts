@@ -3,6 +3,7 @@ import {CommandHandler, CommandOption} from '../../types/command';
 import {BanksyncCommand} from "./subcommands/banksync";
 import os from 'os';
 import {CommandRegistry} from "../../registry/commandRegistry";
+import {StatementsyncCommand} from "./subcommands/statementsync";
 
 const actualOptions = {
     serverURL: {
@@ -28,10 +29,11 @@ const actualOptions = {
     } as CommandOption,
 } as const;
 
-export type ActualOptions = keyof typeof actualOptions;
+export type ActualOptions = Record<keyof typeof actualOptions, string>;
 
 const subCommandRegistry = new CommandRegistry(
-    new BanksyncCommand()
+    new BanksyncCommand(),
+    new StatementsyncCommand(),
 );
 
 export class ActualCommand implements CommandHandler {
