@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import {executeCommand, getFileInfo, readInput} from "./proc";
+import {executeCommand, readInput} from "./proc";
+import {getFileInfo} from "./files";
 import { parseSync, stringifySync, Node } from 'subtitle'
 import {ParsedPath} from "node:path";
 

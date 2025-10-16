@@ -21,6 +21,7 @@
   "devDependencies": {
     "@actual-app/api": "^25.10.0",
     "@commander-js/extra-typings": "^14.0.0",
+    "@infisical/sdk": "^4.0.6",
     "@types/lodash": "^4.17.20",
     "@types/luxon": "^3.7.1",
     "@types/node": "^22.18.7",

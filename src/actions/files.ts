@@ -1,4 +1,6 @@
-import {existsSync, promises as fs, statSync} from "fs";
+import {existsSync, promises as fs, statSync, readFileSync} from "fs";
+import {ParsedPath} from "node:path";
+import path from "path";
 
 export const ensureEmptyDirectory = async (dirPath: string): Promise<void> => {
     // Check if path exists
@@ -22,4 +24,14 @@ export const ensureEmptyDirectory = async (dirPath: string): Promise<void> => {
     await fs.mkdir(dirPath, { recursive: true });
 
     console.log(`Directory emptied: ${dirPath}`);
+};
+
+export const getFileInfo = (filePath: string): ParsedPath => {
+    const fileNameWithExtension = path.basename(filePath);
+    return path.parse(fileNameWithExtension);
+};
+
+export const readJsonFile = (filePath: string): any => {
+    const fileContent = readFileSync(filePath, 'utf8');
+    return JSON.parse(fileContent);
 };

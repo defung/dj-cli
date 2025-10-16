@@ -2,15 +2,10 @@ import * as api from "@actual-app/api";
 import {APIAccountEntity, APIScheduleEntity} from "@actual-app/api/@types/loot-core/src/server/api-models";
 import {ensureEmptyDirectory} from "./files";
 import _ from 'lodash';
-import { DateTime } from 'luxon';
+import {DateTime} from 'luxon';
 import {TransactionEntity} from "@actual-app/api/@types/loot-core/src/types/models";
-
-interface ActualConfig {
-    dataDir: string;
-    serverURL: string;
-    password: string;
-    syncID: string
-}
+import {getInfisicalSecrets} from "./infisical";
+import {ActualConfig} from "../commands/actual";
 
 interface CreditCardScheduleEntity extends APIScheduleEntity {
     name: string;
@@ -24,6 +19,8 @@ interface CreditCardInfo {
     accountId: string;
 }
 
+const DATETIME_FORMAT = 'yyyy-MM-dd';
+
 const CREDIT_CARD_ACCOUNTS = {
     'Venture X': {
         accountId: '36e96ed9-5919-4975-a383-0accb2e5c7a5',
@@ -32,8 +29,6 @@ const CREDIT_CARD_ACCOUNTS = {
         accountId: 'c5d0a611-d1ab-4128-a407-5deec416b737',
     } as CreditCardInfo,
 } as const;
-
-const DATETIME_FORMAT = 'yyyy-MM-dd';
 
 const withApi = async <A>({ dataDir, serverURL, password, syncID }: ActualConfig, op: () => Promise<A>): Promise<A> => {
     await ensureEmptyDirectory(dataDir);
@@ -113,7 +108,7 @@ const getOrCreateNextStatementSchedule = async (today: DateTime, creditCardName:
 const getCompletedTransactionsBetween = async (accountId: string, startDate: DateTime, endDate: DateTime): Promise<TransactionEntity[]> => {
     const transactions: TransactionEntity[] = await api.getTransactions(accountId, startDate.toFormat(DATETIME_FORMAT), endDate.toFormat(DATETIME_FORMAT));
 
-    return transactions.filter((t) => t.cleared);
+    return _.sortBy(transactions.filter((t) => t.cleared), (t) => t.date);
 };
 
 export const banksync = async (config: ActualConfig): Promise<void> => {

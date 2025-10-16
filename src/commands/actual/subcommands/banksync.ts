@@ -1,7 +1,7 @@
 import { Command } from '@commander-js/extra-typings';
 import { CommandHandler } from '../../../types/command';
-import {ActualOptions} from "../index";
 import {banksync} from "../../../actions/actual";
+import {getActualConfig} from "../index";
 
 export class BanksyncCommand implements CommandHandler {
     name = 'banksync';
@@ -12,18 +12,9 @@ export class BanksyncCommand implements CommandHandler {
             .command(this.name)
             .description(this.description)
             .action(async (_, cmd) => {
-                const options = cmd.parent?.opts() as ActualOptions;
+                const actualConfig = await getActualConfig(cmd.parent?.opts());
 
-                if (!options) {
-                    throw new Error('Missing required options!');
-                }
-
-                await banksync({
-                    serverURL: options.serverURL,
-                    password: options.password,
-                    syncID: options.syncID,
-                    dataDir: options.dataDir,
-                })
+                await banksync(actualConfig);
             });
     }
 }
