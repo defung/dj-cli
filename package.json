@@ -19,7 +19,7 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "@actual-app/api": "^25.10.0",
+    "@actual-app/api": "^25.11.0",
     "@commander-js/extra-typings": "^14.0.0",
     "@infisical/sdk": "^4.0.6",
     "@types/lodash": "^4.17.20",
@@ -34,7 +34,7 @@
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@actual-app/api": "^25.9.0",
+    "@actual-app/api": "^25.11.0",
     "better-sqlite3": "^12.4.1"
   }
 }
