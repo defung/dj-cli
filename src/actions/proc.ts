@@ -30,15 +30,15 @@ export async function executeCommand(command: string, args: string[]): Promise<{
 };
 
 export const readInput = async (question: string, validator?: (input: string) => boolean): Promise<string> => {
-    const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
     let input: string = '';
     let firstRun = true;
 
     do {
+        const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
         if (!firstRun) {
             console.log("Invalid input!");
         }
@@ -51,7 +51,7 @@ export const readInput = async (question: string, validator?: (input: string) =>
         });
 
         firstRun = false;
-    } while (!validator || validator(input));
+    } while (!validator || !validator(input));
 
     return input;
 };

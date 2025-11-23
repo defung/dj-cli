@@ -130,11 +130,23 @@ const selectSubtitles = async (subtitles: SubtitleTrack[], numTracks: number): P
         const input = await readInput(`Enter number (1-${subtitles.length}): `, (input: string): boolean => {
             const inputNum = parseInt(input.trim());
 
-            if (Number.isNaN(inputNum) || (inputNum < 1 || inputNum > subtitles.length)) return false;
+            if (Number.isNaN(inputNum)) {
+                console.log(`'${input}' is not a valid number!`);
+                return false;
+            }
+            if (inputNum < 1 || inputNum > subtitles.length) {
+                console.log(`'${inputNum}' is not within range (1-${subtitles.length})!`);
+                return false;
+            }
 
             const selectedTrack = subtitles[inputNum - 1];
 
-            return !selectedTracks.some(track => track.id === selectedTrack.id);
+            if (selectedTracks.some(track => track.id === selectedTrack.id)) {
+                console.log(`'${inputNum}' was previously selected!`);
+                return false;
+            }
+
+            return true;
         });
 
         const selectedTrack = subtitles[parseInt(input.trim()) - 1];
