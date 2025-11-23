@@ -277,7 +277,7 @@ export async function extractSubtitles(
         console.log(`Extracting ${subtitleTracks.length} subtitle track(s)...`);
 
         // Execute mkvextract command
-        const { stdout, stderr, code } = await executeCommand("mkvextract", extractArgs);
+        const { stdout, stderr, code } = await executeCommand("mkvextract", extractArgs, true);
 
         if (code !== 0) {
             const errorText = stderr.toString();

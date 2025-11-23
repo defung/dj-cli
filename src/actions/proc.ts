@@ -7,25 +7,31 @@ import * as fs from "fs";
 /**
  * Executes a command and returns stdout, stderr, and exit code
  */
-export async function executeCommand(command: string, args: string[]): Promise<{stdout: Buffer, stderr: Buffer, code: number}> {
+export async function executeCommand(command: string, args: string[], pipeToMainProcess: boolean = false): Promise<{stdout: Buffer, stderr: Buffer, code: number}> {
     return new Promise((resolve, reject) => {
-        const process = spawn(command, args);
+        const childProcess = spawn(command, args);
         let stdout = Buffer.alloc(0);
         let stderr = Buffer.alloc(0);
 
-        process.stdout.on('data', (data) => {
+        // Stream output in real-time
+        if (pipeToMainProcess) {
+            if (childProcess.stdout) childProcess.stdout.pipe(process.stdout);
+            if (childProcess.stderr) childProcess.stderr.pipe(process.stderr);
+        }
+
+        childProcess.stdout.on('data', (data) => {
             stdout = Buffer.concat([stdout, data]);
         });
 
-        process.stderr.on('data', (data) => {
+        childProcess.stderr.on('data', (data) => {
             stderr = Buffer.concat([stderr, data]);
         });
 
-        process.on('close', (code) => {
+        childProcess.on('close', (code) => {
             resolve({ stdout, stderr, code: code || 0 });
         });
 
-        process.on('error', reject);
+        childProcess.on('error', reject);
     });
 };
 
