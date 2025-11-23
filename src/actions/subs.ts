@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import {executeCommand, readInput} from "./proc";
-import {getFileInfo} from "./files";
+import {getFileInfo, getPathInfo} from "./files";
 import { parseSync, stringifySync, Node } from 'subtitle'
 import {ParsedPath} from "node:path";
 
@@ -460,9 +460,17 @@ const batchExtractMergeOp = async (mkvFiles: string[], workdir: string, targetTr
 
     const tracksToExtract = await findSubtitlesToExtract(2, targetTracks, mkvFileSubtitles);
 
-    const extracted = await extractSubtitles(mkvFilePath, tracksToExtract, path.join(workdir, 'tracks'));
-
     const outputPath = `${workdir}/${mkvFileInfo.name}.${tracksToExtract[0].language}${tracksToExtract[1].language}${getSubtitleExtension(tracksToExtract[0].codec)}`;
+
+    if (getPathInfo(outputPath) === 'file') {
+        const input = await readInput(`File '${outputPath}' already exists, skip? (y/n):`, (input) => ['y', 'n'].includes(input.trim().toLowerCase()));
+
+        if (input.trim().toLowerCase() === 'y') {
+            return batchExtractMergeOp(mkvFiles.slice(1), workdir, tracksToExtract);
+        }
+    }
+
+    const extracted = await extractSubtitles(mkvFilePath, tracksToExtract, path.join(workdir, 'tracks'));
 
     await mergeSrtFiles({
         subtitle1: { path: extracted[0] },

@@ -2,6 +2,17 @@ import {existsSync, promises as fs, statSync, readFileSync} from "fs";
 import {ParsedPath} from "node:path";
 import path from "path";
 
+export type PathInfo = 'file' | 'directory' | 'not-exist' | 'unknown';
+
+export const getPathInfo = (filePath: string): PathInfo => {
+    try {
+        const stats = statSync(filePath);
+        return stats.isFile() ? 'file' : stats.isDirectory() ? 'directory' : 'not-exist';
+    } catch (error) {
+        return 'unknown';
+    }
+};
+
 export const ensureEmptyDirectory = async (dirPath: string): Promise<void> => {
     // Check if path exists
     if (!existsSync(dirPath)) {
