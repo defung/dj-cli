@@ -58,7 +58,7 @@ const withApi = async <A>({ dataDir, serverURL, password, syncID }: ActualConfig
 }
 
 const getStatementStartDate = (statementCloseDate: DateTime): DateTime => {
-    const daysToSubtract = statementCloseDate.daysInMonth! + 1;
+    const daysToSubtract = statementCloseDate.daysInMonth!;
     return statementCloseDate.minus({ days: daysToSubtract });
 }
 
