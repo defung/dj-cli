@@ -1,4 +1,4 @@
-import * as api from "@actual-app/api";
+import * as actualApi from "@actual-app/api";
 import {
     APIAccountEntity,
     APIPayeeEntity,
@@ -9,6 +9,8 @@ import _ from 'lodash';
 import {DateTime} from 'luxon';
 import {RecurConfig, TransactionEntity} from "@actual-app/api/@types/loot-core/src/types/models";
 import {ActualConfig} from "../commands/actual";
+
+type ActualApi = typeof actualApi;
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
 
@@ -44,34 +46,35 @@ const PAYEE_NAME = 'Capital One Credit Card Payment';
 
 const DATETIME_FORMAT = 'yyyy-MM-dd';
 
-const withApi = async <A>({ dataDir, serverURL, password, syncID }: ActualConfig, op: () => Promise<A>): Promise<A> => {
+const withApi = async <A>({ dataDir, serverURL, password, syncID }: ActualConfig, op: (api: ActualApi) => Promise<A>): Promise<A> => {
     await ensureEmptyDirectory(dataDir);
-    await api.init({ dataDir, serverURL, password });
-    await api.downloadBudget(syncID, { password: password });
+    await actualApi.init({ dataDir, serverURL, password });
+    await actualApi.downloadBudget(syncID, { password: password });
 
     try {
-        return await op();
+        return await op(actualApi);
     } finally {
         console.log('Shutting down API');
-        await api.shutdown();
+        await actualApi.shutdown();
     }
 }
 
-const getStatementStartDate = (statementCloseDate: DateTime): DateTime => {
-    const daysToSubtract = statementCloseDate.daysInMonth!;
-    return statementCloseDate.minus({ days: daysToSubtract });
+// this is valid for CapitalOne
+export const statementOps = {
+    getStartDate: (closeDate: DateTime): DateTime => {
+        const daysToSubtract = closeDate.daysInMonth! - 1;
+        return closeDate.minus({ days: daysToSubtract });
+    },
+    getCloseDate: (startDate: DateTime): DateTime => {
+        const daysToAdd = startDate.set({ month: startDate.month + 1, day: 1 }).daysInMonth! - 1;
+        return startDate.plus({ days: daysToAdd });
+    },
+    getPaymentDate: (closeDate: DateTime, cardPaymentDayOfMonth: number): DateTime => {
+        const nextMonth = closeDate.plus({ months: 1 });
+        const targetDay = Math.min(cardPaymentDayOfMonth, nextMonth.daysInMonth!);
+        return nextMonth.set({ day: targetDay });
+    }
 }
-
-const getNextStatementCloseDate = (lastStatementCloseDate: DateTime): DateTime => {
-    const daysToAdd = lastStatementCloseDate.set({ month: lastStatementCloseDate.month + 1, day: 1 }).daysInMonth!;
-    return lastStatementCloseDate.plus({ days: daysToAdd });
-};
-
-const getNextStatementPaymentDate = (statementCloseDate: DateTime, paymentDayOfMonth: number): DateTime => {
-    const nextMonth = statementCloseDate.plus({ months: 1 });
-    const targetDay = Math.min(paymentDayOfMonth, nextMonth.daysInMonth!);
-    return nextMonth.set({ day: targetDay });
-};
 
 const toCreditCardScheduleEntity = (schedule: APIScheduleEntity): CreditCardScheduleEntity => {
     if (!schedule.name) {
@@ -85,12 +88,12 @@ const toCreditCardScheduleEntity = (schedule: APIScheduleEntity): CreditCardSche
         throw new Error(`Invalid close date '${nameParts[1]}': ${closeDate.invalidExplanation}`);
     }
 
-    const startDate = getStatementStartDate(closeDate);
+    const startDate = statementOps.getStartDate(closeDate);
 
     return { ...schedule, name: schedule.name!, statement: { startDate, closeDate } };
 };
 
-const createSchedule = async (payeeName: string, bankAccountId: string, creditCardSchedule: CreateCreditCardScheduleEntity): Promise<CreditCardScheduleEntity> => {
+const createSchedule = async (api: ActualApi, payeeName: string, bankAccountId: string, creditCardSchedule: CreateCreditCardScheduleEntity): Promise<CreditCardScheduleEntity> => {
     const payees: APIPayeeEntity[] = await api.getPayees();
     const payee = _.find(payees, (p) => p.name === payeeName);
 
@@ -125,7 +128,7 @@ const getSortedExistingCreditCardSchedule = (creditCardName: string, existingSch
     return sortedSchedules.map(toCreditCardScheduleEntity);
 };
 
-const getOrCreateNextStatementSchedule = async (today: DateTime, creditCardName: string, creditCardInfo: CreditCardInfo, existingSchedules: APIScheduleEntity[]): Promise<CreditCardScheduleEntity> => {
+const getOrCreateNextStatementSchedule = async (api: ActualApi, today: DateTime, creditCardName: string, creditCardInfo: CreditCardInfo, existingSchedules: APIScheduleEntity[]): Promise<CreditCardScheduleEntity> => {
     const existingCreditCardSchedules: CreditCardScheduleEntity[] = getSortedExistingCreditCardSchedule(creditCardName, existingSchedules);
 
     const targetSchedule = existingCreditCardSchedules.find((s) => s.statement.closeDate >= today);
@@ -139,14 +142,15 @@ const getOrCreateNextStatementSchedule = async (today: DateTime, creditCardName:
 
     // in case our latest schedule is old, we'll need this loop to continue calculating the closing date
     while (candidateNextStatement.closeDate < today) {
-        const newCloseDate = getNextStatementCloseDate(candidateNextStatement.closeDate);
+        const nextStartDate = candidateNextStatement.closeDate.plus({ day: 1 });
+        const nextCloseDate = statementOps.getCloseDate(nextStartDate);
         candidateNextStatement = {
-            startDate: getStatementStartDate(newCloseDate),
-            closeDate: newCloseDate,
+            startDate: nextStartDate,
+            closeDate: nextCloseDate,
         };
     }
 
-    const paymentDate = getNextStatementPaymentDate(candidateNextStatement.closeDate, creditCardInfo.paymentDayOfMonth);
+    const paymentDate = statementOps.getPaymentDate(candidateNextStatement.closeDate, creditCardInfo.paymentDayOfMonth);
 
     const creditCardSchedule: CreateCreditCardScheduleEntity = {
         name: `${creditCardName} - ${candidateNextStatement.closeDate.toFormat(DATETIME_FORMAT)}`,
@@ -156,11 +160,11 @@ const getOrCreateNextStatementSchedule = async (today: DateTime, creditCardName:
 
     console.log(`No existing schedule found, creating a new one... (${creditCardSchedule.name})`);
 
-    return await createSchedule(PAYEE_NAME, BANK_ACCOUNT_ID, creditCardSchedule);
+    return await createSchedule(api, PAYEE_NAME, BANK_ACCOUNT_ID, creditCardSchedule);
 };
 
 // both dates are inclusive (to match actual's getTransactions function)
-const sumCompletedTransactionsBetween = async (accountId: string, startDate: DateTime, closeDate: DateTime): Promise<number> => {
+const sumCompletedTransactionsBetween = async (api: ActualApi, accountId: string, startDate: DateTime, closeDate: DateTime): Promise<number> => {
     const transactions: TransactionEntity[] = await api.getTransactions(accountId, startDate.toFormat(DATETIME_FORMAT), closeDate.toFormat(DATETIME_FORMAT));
 
     const completedTransactions =  _.sortBy(transactions.filter((t) => !!t.cleared), (t) => t.date);
@@ -182,14 +186,14 @@ const sumCompletedTransactionsBetween = async (accountId: string, startDate: Dat
 };
 
 export const banksync = async (config: ActualConfig): Promise<void> => {
-    await withApi(config, async () => {
+    await withApi(config, async (api: ActualApi) => {
         const accounts: APIAccountEntity[] = await api.getAccounts();
         await Promise.all(accounts.map((a) => api.runBankSync({ accountId: a.id })));
     });
 }
 
 export const updateCreditCardSchedules = async (config: ActualConfig): Promise<void> => {
-    await withApi(config, async () => {
+    await withApi(config, async (api: ActualApi) => {
         const today = DateTime.now().startOf('day');
 
         const existingSchedules: APIScheduleEntity[] = await api.getSchedules();
@@ -200,11 +204,11 @@ export const updateCreditCardSchedules = async (config: ActualConfig): Promise<v
 
                 const creditCardInfo = CREDIT_CARD_ACCOUNTS[name as keyof typeof CREDIT_CARD_ACCOUNTS];
 
-                const statementSchedule: CreditCardScheduleEntity = await getOrCreateNextStatementSchedule(today, name, creditCardInfo, existingSchedules);
+                const statementSchedule: CreditCardScheduleEntity = await getOrCreateNextStatementSchedule(api, today, name, creditCardInfo, existingSchedules);
 
                 console.log(`Working on updating schedule '${statementSchedule.name}'...`);
 
-                const totalAmount = await sumCompletedTransactionsBetween(creditCardInfo.accountId, statementSchedule.statement.startDate, statementSchedule.statement.closeDate);
+                const totalAmount = await sumCompletedTransactionsBetween(api, creditCardInfo.accountId, statementSchedule.statement.startDate, statementSchedule.statement.closeDate);
 
                 console.log(`Calculated total amount between ${statementSchedule.statement.startDate.toFormat(DATETIME_FORMAT)} and ${statementSchedule.statement.closeDate.toFormat(DATETIME_FORMAT)}: ${totalAmount}`);
 
@@ -226,7 +230,7 @@ export const updateCreditCardSchedules = async (config: ActualConfig): Promise<v
                         return;
                     }
 
-                    const previousTotalAmount = await sumCompletedTransactionsBetween(creditCardInfo.accountId, previousStatementSchedule.statement.startDate, previousStatementSchedule.statement.closeDate);
+                    const previousTotalAmount = await sumCompletedTransactionsBetween(api, creditCardInfo.accountId, previousStatementSchedule.statement.startDate, previousStatementSchedule.statement.closeDate);
 
                     if (previousTotalAmount !== previousStatementSchedule.amount) {
                         console.log(`Previous statement schedule '${previousStatementSchedule.name}' has a different amount, updating...`);
