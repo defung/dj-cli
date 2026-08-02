@@ -4,16 +4,19 @@ import {ensureEmptyDirectory} from "./files";
 import _ from 'lodash';
 import {DateTime} from 'luxon';
 import {ActualConfig} from "../commands/actual";
-import { APIAccountEntity, APIPayeeEntity, APIScheduleEntity } from "./@types/actual/api";
-import { RecurConfig, TransactionEntity } from "./@types/actual/server";
 
 type ActualApi = typeof actualApi;
 
+type APIAccountEntity = Awaited<ReturnType<typeof actualApi.getAccounts>>[number];
+type APIPayeeEntity = Awaited<ReturnType<typeof actualApi.getPayees>>[number];
+type APIScheduleEntity = Awaited<ReturnType<typeof actualApi.getSchedules>>[number];
+type TransactionEntity = Awaited<ReturnType<typeof actualApi.getTransactions>>[number];
+
+
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
 
-type CreditCardScheduleEntity = Flatten<Omit<APIScheduleEntity, 'date'> & {
+type CreditCardScheduleEntity = Flatten<APIScheduleEntity & {
     name: string;
-    date: string | RecurConfig;
     statement: {
         startDate: DateTime;
         closeDate: DateTime;
