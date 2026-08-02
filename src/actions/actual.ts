@@ -1,13 +1,15 @@
 import * as actualApi from "@actual-app/api";
+
 import {
     APIAccountEntity,
     APIPayeeEntity,
     APIScheduleEntity
-} from "@actual-app/api/@types/loot-core/src/server/api-models";
+} from '@actual-app/core/src/server/api-models';
+
 import {ensureEmptyDirectory} from "./files";
 import _ from 'lodash';
 import {DateTime} from 'luxon';
-import {RecurConfig, TransactionEntity} from "@actual-app/api/@types/loot-core/src/types/models";
+import {RecurConfig, TransactionEntity} from "@actual-app/core/src/types/models";
 import {ActualConfig} from "../commands/actual";
 
 type ActualApi = typeof actualApi;
@@ -108,6 +110,7 @@ const createSchedule = async (api: ActualApi, payeeName: string, bankAccountId: 
         amountOp: 'isapprox',
         account: bankAccountId,
         payee: payee.id,
+        posts_transaction: false,
     });
 
     const newSchedules: APIScheduleEntity[] = await api.getSchedules();
