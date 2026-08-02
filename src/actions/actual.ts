@@ -1,16 +1,11 @@
 import * as actualApi from "@actual-app/api";
 
-import {
-    APIAccountEntity,
-    APIPayeeEntity,
-    APIScheduleEntity
-} from '@actual-app/core/src/server/api-models';
-
 import {ensureEmptyDirectory} from "./files";
 import _ from 'lodash';
 import {DateTime} from 'luxon';
-import {RecurConfig, TransactionEntity} from "@actual-app/core/src/types/models";
 import {ActualConfig} from "../commands/actual";
+import { APIAccountEntity, APIPayeeEntity, APIScheduleEntity } from "./@types/actual/api";
+import { RecurConfig, TransactionEntity } from "./@types/actual/server";
 
 type ActualApi = typeof actualApi;
 
