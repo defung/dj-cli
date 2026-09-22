@@ -6,6 +6,7 @@ import {MergeCommand} from "./subcommands/merge";
 import {ExtractCommand} from "./subcommands/extract";
 import {ShiftCommand} from "./subcommands/shift";
 import {SyncCommand} from "./subcommands/sync";
+import {SyncBatchCommand} from "./subcommands/syncBatch";
 
 const subCommandRegistry = new CommandRegistry(
     new ExtractCommand(),
@@ -13,6 +14,7 @@ const subCommandRegistry = new CommandRegistry(
     new ShiftCommand(),
     new BatchExtractMergeCommand(),
     new SyncCommand(),
+    new SyncBatchCommand(),
 );
 
 export class SubsCommand implements CommandHandler {
