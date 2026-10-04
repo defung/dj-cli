@@ -1,4 +1,4 @@
-import {Command, Option} from "commander";
+import {Command} from "commander";
 
 export interface SyncCLIOptions {
     mode: string;
