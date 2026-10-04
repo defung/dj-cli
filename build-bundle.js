@@ -6,7 +6,7 @@ const runBundle = async () => {
     bundle: true,
     outfile: 'dist/bundled/bundle.js',
     platform: 'node',
-    target: 'node22',
+    target: 'node26',
     format: 'cjs',
     sourcemap: true,
     minify: false,
