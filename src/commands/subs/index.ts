@@ -2,6 +2,7 @@ import {Command} from '@commander-js/extra-typings';
 import {CommandHandler} from '../../types/command';
 import {CommandRegistry} from "../../registry/commandRegistry";
 import {BatchExtractMergeCommand} from "./subcommands/batchExtractMerge";
+import {MergeBatchCommand} from "./subcommands/mergeBatch";
 import {MergeCommand} from "./subcommands/merge";
 import {ExtractCommand} from "./subcommands/extract";
 import {ShiftCommand} from "./subcommands/shift";
@@ -11,6 +12,7 @@ import {SyncBatchCommand} from "./subcommands/syncBatch";
 const subCommandRegistry = new CommandRegistry(
     new ExtractCommand(),
     new MergeCommand(),
+    new MergeBatchCommand(),
     new ShiftCommand(),
     new BatchExtractMergeCommand(),
     new SyncCommand(),
