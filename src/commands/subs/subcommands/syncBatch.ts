@@ -3,8 +3,8 @@ import { Command } from "@commander-js/extra-typings";
 import { promises as fs } from "fs";
 import path from "path";
 import readline from "readline";
-import { runSync, SyncOptions, SyncReport, SyncProgress } from "../../../actions/srt-sync";
-import { addSyncOptions, ParsedSyncOptions, parseSyncOptions, SyncCLIOptions } from "./syncOptions";
+import { executeCommand } from "../../../actions/proc";
+import { addSyncOptions, ParsedSyncOptions, parseSyncOptions, SyncCLIOptions, buildSyncArgs } from "./syncOptions";
 
 interface SubtitlePair {
     baseName: string;
@@ -17,7 +17,6 @@ interface BatchResult {
     pair: SubtitlePair;
     success: boolean;
     error?: string;
-    report?: SyncReport;
 }
 
 export class SyncBatchCommand implements CommandHandler {
@@ -168,7 +167,7 @@ async function runBatch(pairs: SubtitlePair[], options: ParsedSyncOptions, threa
 
     const queue = pairs.map((pair, index) => ({ index, pair }));
     const workers = Math.min(threads, queue.length);
-    await Promise.all(Array.from({ length: workers }, async (_, workerIndex) => {
+    await Promise.all(Array.from({ length: workers }, async () => {
         while (true) {
             const item = queue.shift();
             if (!item) break;
@@ -183,40 +182,19 @@ async function runBatch(pairs: SubtitlePair[], options: ParsedSyncOptions, threa
 async function runPair(index: number, total: number, pair: SubtitlePair, options: ParsedSyncOptions): Promise<BatchResult> {
     console.log(`\n[${index}/${total}] ${pair.baseName}`);
 
-    const syncOptions: SyncOptions = {
-        refPath: pair.refPath,
-        targetPath: pair.targetPath,
-        outPath: pair.outPath,
-        reportPath: null,
-        refLang: undefined,
-        targetLang: undefined,
-        mode: options.mode,
-        embedModel: options.embedModel,
-        embedInstruction: options.embedInstruction,
-        ollamaUrl: options.ollamaUrl,
-        maxGroup: options.maxGroup,
-        minConfidence: options.minConfidence,
-        timeToleranceMs: options.timeToleranceMs,
-        skipPenalty: options.skipPenalty,
-        creditPatterns: [],
-        strict: options.strict,
-        clampOverlap: options.clampOverlap,
-        dryRun: options.dryRun,
-        refEncoding: options.refEncoding,
-        targetEncoding: options.targetEncoding,
-        verbose: options.verbose,
-        onProgress: renderProgress,
-    };
+    const args = buildSyncArgs(pair.refPath, pair.targetPath, pair.outPath, options);
 
     try {
-        const { report } = await runSync(syncOptions);
-        return { pair, success: true, report };
+        const { code, stderr } = await executeCommand('lapse', args, false);
+        if (code !== 0) {
+            const message = stderr.toString().trim() || `lapse exited with code ${code}`;
+            return { pair, success: false, error: message };
+        }
+        return { pair, success: true };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         console.error(`❌ Failed: ${message}`);
         return { pair, success: false, error: message };
-    } finally {
-        finalizeProgress();
     }
 }
 
@@ -243,12 +221,4 @@ function parseThreads(value: string): number {
         throw new Error('--threads must be a positive integer');
     }
     return n;
-}
-
-function renderProgress(_p: SyncProgress): void {
-    // Batch mode prints a header per pair; avoid TTY churn from per-stage updates.
-}
-
-function finalizeProgress(): void {
-    // no-op for batch mode
 }

@@ -1,9 +1,22 @@
 # AS builder
-FROM node:24-slim
+FROM node:26-slim
 
-ENV NODE_PATH /usr/local/lib/node_modules
+ENV NODE_PATH=/usr/local/lib/node_modules
 
-RUN apt update && apt install -y mkvtoolnix vim bash
+RUN apt update && apt install -y mkvtoolnix vim bash curl
+
+# Install lapse subtitle sync engine (architecture-aware)
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then LAPSE_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then LAPSE_ARCH="arm64"; \
+    else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
+    curl -L -o /tmp/lapse-linux-${LAPSE_ARCH}.tar.gz \
+        https://github.com/Schwponaco-org/lapse/releases/latest/download/lapse-linux-${LAPSE_ARCH}.tar.gz && \
+    tar -xzf /tmp/lapse-linux-${LAPSE_ARCH}.tar.gz -C /tmp && \
+    mv /tmp/lapse-linux-${LAPSE_ARCH}/lapse /usr/local/bin/lapse && \
+    chmod +x /usr/local/bin/lapse && \
+    rm -rf /tmp/lapse-linux-${LAPSE_ARCH} /tmp/lapse-linux-${LAPSE_ARCH}.tar.gz && \
+    lapse --version
 
 WORKDIR /app
 
