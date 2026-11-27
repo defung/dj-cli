@@ -216,31 +216,6 @@ export const updateCreditCardSchedules = async (config: ActualConfig): Promise<v
                 await api.updateSchedule(statementSchedule.id, { amount: totalAmount });
 
                 console.log(`Successfully updated schedule '${statementSchedule.name}'!`);
-
-                // if we are within 2 days of statement start, try to go back and update previous statement's transactions
-                if (statementSchedule.statement.startDate.plus({ days: 2 }) >= today) {
-                    const targetClosingDate = statementSchedule.statement.startDate.minus({ days: 1 });
-
-                    console.log(`Updating previous statement schedule with a closing date of ${targetClosingDate.toFormat(DATETIME_FORMAT)}...`);
-
-                    const allSchedules = getSortedExistingCreditCardSchedule(name, existingSchedules);
-                    const previousStatementSchedule = allSchedules.find((s) => s.statement.closeDate.equals(targetClosingDate));
-
-                    if (!previousStatementSchedule) {
-                        console.log(`No previous statement schedule found with closing date of '${targetClosingDate.toFormat(DATETIME_FORMAT)}'`);
-                        return;
-                    }
-
-                    const previousTotalAmount = await sumCompletedTransactionsBetween(api, creditCardInfo.accountId, previousStatementSchedule.statement.startDate, previousStatementSchedule.statement.closeDate);
-
-                    if (previousTotalAmount !== previousStatementSchedule.amount) {
-                        console.log(`Previous statement schedule '${previousStatementSchedule.name}' has a different amount, updating...`);
-                        await api.updateSchedule(previousStatementSchedule.id, { amount: previousTotalAmount });
-                    } else {
-                        console.log(`Previous statement schedule '${previousStatementSchedule.name}' has the same amount, skipping update...`);
-                    }
-
-                }
             } catch (e) {
                 console.error(`Failed to update schedule for card '${name}'!`, e);
             }
